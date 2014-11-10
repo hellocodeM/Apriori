@@ -34,7 +34,7 @@ object Main {
     candidate
   }
 
-  def validateCandidate(transactions: RDD[(Array[String], Int)], candidate: Set[Set[String]], limit: Int) = {
+  def validateCandidate(transactions: RDD[(List[String], Int)], candidate: Set[Set[String]], limit: Int) = {
     transactions.flatMap(line => {
       var tmp = Set[(Set[String], Int)]()
       for (can <- candidate) {
@@ -52,11 +52,12 @@ object Main {
     val limit = (sum * 0.85).toInt
 
     // pre process
-    var DB = input.map(line => line.split(" ").drop(1)).cache
-    var oneFIS = DB.flatMap(items => items.map((_, 1))).reduceByKey(_ + _).filter(_._2 >= limit).collect.toList
+    var DB = input.map(line => (line.split(" ").drop(1).toList, 1)).reduceByKey(_ + _).cache
+    var oneFIS = DB.flatMap(line => line._1.map((_, line._2)))
+    	.reduceByKey(_ + _).filter(_._2 >= limit).collect.toList
     // compress
     var transactions = DB.map(line => {
-      (line.filter(item => oneFIS.exists(_._1 == item)), 1)
+      (line._1.filter(item => oneFIS.exists(_._1 == item)), line._2)
     }).reduceByKey(_ + _)
     var cur = sc.parallelize(oneFIS.map(item => (Set(item._1), item._2)))
     var totalCandidate = Set[Set[String]]()
